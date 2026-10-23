@@ -3,3 +3,9 @@ __pycache__/
 *.pyc
 *.db
 .pytest_cache/
+
+*.db-wal
+*.db-shm
+
+*.db-wal
+*.db-shm
