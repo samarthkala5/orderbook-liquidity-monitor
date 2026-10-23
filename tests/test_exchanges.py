@@ -69,6 +69,6 @@ async def test_binance_timeout_raises():
         "Request timed out"
     )
 
-    client = BinanceClient(max_retries=2)
+    client = BinanceClient(max_attempts=2, backoff=0)
     with pytest.raises(ExchangeTimeout):
         await client.fetch_order_book("BTC")
