@@ -10,7 +10,8 @@ from datetime import datetime, timezone
 # One place decides where the database lives. Collector and API both use this,
 # so they always look at the same file. Override with the ORDERBOOK_DB env var
 # or the collector's --db flag.
-DEFAULT_DB_PATH = os.environ.get("ORDERBOOK_DB", "orderbook.db")
+DEFAULT_DB_PATH = os.getenv("DB_PATH") or os.getenv("ORDERBOOK_DB") or r"C:\data\orderbook.db"
+DB_PATH = DEFAULT_DB_PATH
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS snapshots (

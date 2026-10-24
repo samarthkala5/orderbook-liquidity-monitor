@@ -1,0 +1,29 @@
+services:
+  collector:
+    build: .
+    command: ["python", "-m", "app.collector"]
+    environment:
+      DB_PATH: /data/orderbook.db
+    volumes:
+      - orderbook-data:/data
+    restart: unless-stopped
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DB_PATH: /data/orderbook.db
+    volumes:
+      - orderbook-data:/data
+    depends_on:
+      - collector
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  orderbook-data:
