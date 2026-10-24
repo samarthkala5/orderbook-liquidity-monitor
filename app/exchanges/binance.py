@@ -3,7 +3,18 @@ import time
 
 from app.exchanges.base import BaseExchangeClient, UnknownSymbolError, parse_book
 from app.models import OrderBook
+import os
+import re
 
+def sanitize_url(raw_url: str) -> str:
+    """Extract a clean base URL from raw environment strings or markdown links."""
+    match = re.search(r"https?://[^\s\]\)\"]+", raw_url)
+    if match:
+        return match.group(0).rstrip("/")
+    return raw_url.strip().rstrip("/")
+
+# Apply sanitization when reading the environment variable
+BASE_URL = sanitize_url(os.getenv("BINANCE_BASE_URL", "https://data-api.binance.vision"))
 # Allow overriding host (e.g. https://data-api.binance.vision for cloud deployments)
 BINANCE_HOST = os.getenv("BINANCE_BASE_URL", "https://api.binance.com").rstrip("/")
 BINANCE_DEPTH_URL = f"{BINANCE_HOST}/api/v3/depth"
