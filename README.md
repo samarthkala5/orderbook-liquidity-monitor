@@ -1,3 +1,4 @@
+PowerShell
 @'
 # Order Book Liquidity Monitor
 
@@ -7,8 +8,20 @@ An asynchronous order book liquidity collection engine and REST API built with P
 
 ---
 
+## Metric Definitions
+
+1. **Spread (bps)**: $\frac{\text{best\_ask} - \text{best\_bid}}{\text{mid\_price}} \times 10,000$
+2. **Depth (10 bps)**: Total USD volume aggregated within 0.10% (10 basis points) of mid price for bids and asks.
+3. **Imbalance (10 bps)**: $\frac{\text{bid\_depth\_10bps} - \text{ask\_depth\_10bps}}{\text{bid\_depth\_10bps} + \text{ask\_depth\_10bps}}$ (Ranges from -1.0 to +1.0).
+4. **Slippage ($10k in bps)**: Price impact in basis points incurred when walking the order book to execute a $10,000 market buy or sell order. Returns `null` if order book depth is insufficient to fill $10k.
+
+> **USDT vs USD Caveat**: Spread, depth, imbalance, and slippage in basis points (bps) are normalized and directly comparable across exchanges. However, nominal asset prices on Binance (USDT pairs) and Coinbase (USD pairs) reflect minor base currency/stablecoin peg discrepancies.
+
+---
+
 ## Architecture Overview
-+-------------------+          +-------------------+
+
+             +-------------------+          +-------------------+
              | Binance REST API  |          | Coinbase REST API |
              +---------+---------+          +---------+---------+
                        |                              |
@@ -36,6 +49,7 @@ An asynchronous order book liquidity collection engine and REST API built with P
                                +--------------+
                                | HTTP Client  |
                                +--------------+
+
 ---
 
 ## Key Design Decisions
@@ -67,3 +81,16 @@ docker compose ps
 
 # Tear down containers (data inside /data volume persists)
 docker compose down
+Local Development
+PowerShell
+# Activate virtual environment in PowerShell
+.\.venv\Scripts\Activate.ps1
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run Collector locally
+python -m app.collector --db orderbook.db --interval 10
+
+# Run API locally
+uvicorn app.api:app --host 127.0.0.1 --port 8001 --reload
