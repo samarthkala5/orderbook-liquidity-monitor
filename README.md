@@ -94,3 +94,18 @@ python -m app.collector --db orderbook.db --interval 10
 
 # Run API locally
 uvicorn app.api:app --host 127.0.0.1 --port 8001 --reload
+
+---
+title: Orderbook Liquidity Monitor
+emoji: 📈
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
+Live demo of the Crypto Order Book Liquidity Monitor (FastAPI + SQLite).
+Interactive API docs are at `/docs`.
+
+Source code: https://github.com/samarthkala5/orderbook-liquidity-monitor
