@@ -114,28 +114,38 @@
     }
 
     function updateChart(labels, binanceData, coinbaseData) {
-        const ctx = document.getElementById('spreadChart').getContext('2d');
-        if (chart) chart.destroy();
-        chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    { label: 'Binance Spread (bps)', data: binanceData, borderColor: '#f0b90b', tension: 0.1 },
-                    { label: 'Coinbase Spread (bps)', data: coinbaseData, borderColor: '#0052ff', tension: 0.1 }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
-                    y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+    const ctx = document.getElementById('spreadChart').getContext('2d');
+    if (chart) chart.destroy();
+    
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'Binance Spread (bps)', data: binanceData, borderColor: '#f0b90b', tension: 0.1, pointRadius: 2 },
+                { label: 'Coinbase Spread (bps)', data: coinbaseData, borderColor: '#0052ff', tension: 0.1, pointRadius: 2 }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { 
+                    ticks: { color: '#94a3b8' }, 
+                    grid: { color: '#334155' } 
                 },
-                plugins: { legend: { labels: { color: '#f8fafc' } } }
+                y: { 
+                    ticks: { color: '#94a3b8' }, 
+                    grid: { color: '#334155' },
+                    beginAtZero: false  // Allows chart to zoom into tiny spread differences
+                }
+            },
+            plugins: { 
+                legend: { labels: { color: '#f8fafc' } } 
             }
-        });
-    }
+        }
+    });
+}
 
     function refresh() {
         fetchCompare();

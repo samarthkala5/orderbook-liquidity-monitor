@@ -17,7 +17,14 @@ from app.exchanges.base import ExchangeError, UnknownSymbolError
 from app.exchanges.binance import BinanceClient
 from app.exchanges.coinbase import CoinbaseClient
 from app.metrics import InvalidBookError, compute_snapshot
-from app.storage import DEFAULT_DB_PATH, connect, count_snapshots, fetch_history, utc_now_iso
+from app.storage import (
+    DEFAULT_DB_PATH,
+    connect,
+    count_snapshots,
+    fetch_history,
+    insert_snapshot,
+    utc_now_iso,
+)
 
 EXCHANGES = ("binance", "coinbase")
 PRICE_NOTE = (
@@ -66,41 +73,6 @@ class Comparison(BaseModel):
     note: str
     exchanges: list[LiveMetrics]
 
-# ---------- App & Lifespan ----------
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Shared HTTP client initialized on startup."""
-    async with httpx.AsyncClient() as shared:
-        app.state.clients = {
-            "binance": BinanceClient(client=shared),
-            "coinbase": CoinbaseClient(client=shared),
-        }
-        yield
-
-app = FastAPI(title="Order Book Liquidity Monitor", lifespan=lifespan)
-
-# Mount static files folder
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
-
-@app.get("/", include_in_schema=False)
-async def dashboard():
-    """Serves the dashboard UI without adding it to /docs schema."""
-    return FileResponse("app/static/dashboard.html")
-
-def get_db_path() -> str:
-    return DEFAULT_DB_PATH
-
-async def get_conn(db_path: str = Depends(get_db_path)):
-    conn = connect(db_path)
-    try:
-        yield conn
-    finally:
-        conn.close()
-
-def get_clients(request: Request) -> dict:
-    return request.app.state.clients
-
 # ---------- Helpers ----------
 
 def _validate(exchange: Optional[str], symbol: str) -> tuple:
@@ -122,6 +94,75 @@ async def _live_metrics(client, exchange: str, symbol: str) -> LiveMetrics:
     except (ExchangeError, InvalidBookError) as exc:
         raise HTTPException(502, f"{exchange}: {exc}")
     return LiveMetrics(exchange=exchange, symbol=symbol, ts_utc=utc_now_iso(), **snapshot)
+
+# ---------- Background Collector & Lifespan ----------
+async def background_collector(app: FastAPI, interval_seconds: int = 10):
+    """Continuously fetches and stores snapshots for all supported exchanges and symbols."""
+    while True:
+        await asyncio.sleep(interval_seconds)
+        try:
+            clients = getattr(app.state, "clients", None)
+            if not clients:
+                continue
+            for symbol in SYMBOLS:
+                for exchange in EXCHANGES:
+                    try:
+                        metrics = await _live_metrics(clients[exchange], exchange, symbol)
+                        conn = connect(DEFAULT_DB_PATH)
+                        try:
+                            insert_snapshot(
+                                conn,
+                                metrics.ts_utc,
+                                exchange,
+                                symbol,
+                                metrics.model_dump()
+                            )
+                        finally:
+                            conn.close()
+                    except Exception as exc:
+                        print(f"[Collector] Error fetching {exchange}/{symbol}: {exc}")
+        except asyncio.CancelledError:
+            break
+        except Exception as exc:
+            print(f"[Collector] Loop error: {exc}")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Shared HTTP client and background collector initialized on startup."""
+    async with httpx.AsyncClient() as shared:
+        app.state.clients = {
+            "binance": BinanceClient(client=shared),
+            "coinbase": CoinbaseClient(client=shared),
+        }
+        collector_task = asyncio.create_task(background_collector(app, interval_seconds=10))
+        try:
+            yield
+        finally:
+            collector_task.cancel()
+            await asyncio.gather(collector_task, return_exceptions=True)
+
+# ---------- App & Routes ----------
+
+app = FastAPI(title="Order Book Liquidity Monitor", lifespan=lifespan)
+
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+@app.get("/", include_in_schema=False)
+async def dashboard():
+    """Serves the dashboard UI without adding it to /docs schema."""
+    return FileResponse("app/static/dashboard.html")
+
+def get_db_path() -> str:
+    return DEFAULT_DB_PATH
+
+async def get_conn(db_path: str = Depends(get_db_path)):
+    conn = connect(db_path)
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+def get_clients(request: Request) -> dict:
+    return request.app.state.clients
 
 # ---------- Endpoints ----------
 
