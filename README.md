@@ -1,8 +1,7 @@
-PowerShell
-@'
-# Order Book Liquidity Monitor
+# Crypto Order Book Liquidity Monitor
 
-![CI](https://github.com/<YOUR_GITHUB_USERNAME>/orderbook-liquidity-monitor/actions/workflows/ci.yml/badge.svg)
+[![CI](https://github.com/samarthkala5/orderbook-liquidity-monitor/actions/workflows/ci.yml/badge.svg)](https://github.com/samarthkala5/orderbook-liquidity-monitor/actions)
+**Live Demo:** [https://orderbook-liquidity-monitor.onrender.com/docs](https://orderbook-liquidity-monitor.onrender.com/docs)
 
 An asynchronous order book liquidity collection engine and REST API built with Python, FastAPI, and SQLite WAL. It periodically polls order books across exchanges (Binance, Coinbase) for target trading pairs (BTC, ETH, SOL), computes real-time order book metrics (spreads, depth, imbalance, slippage), and serves aggregated snapshot history over HTTP.
 
