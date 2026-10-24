@@ -13,11 +13,15 @@ import sqlite3
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+import os
 
+BASE_URL = os.getenv("BINANCE_BASE_URL", "https://api.binance.com")
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
-
+from fastapi import FastAPI, HTTPException, Query, Path
+from fastapi.responses import RedirectResponse  # <-- Add this import
 from app.collector import SYMBOLS
 from app.exchanges.base import ExchangeError, UnknownSymbolError
 from app.exchanges.binance import BinanceClient
@@ -92,11 +96,11 @@ async def lifespan(app: FastAPI):
         yield
 
 
-app = FastAPI(
-    title="Order Book Liquidity Monitor",
-    description="Live and historical liquidity metrics for BTC, ETH and SOL on Binance and Coinbase.",
-    lifespan=lifespan,
-)
+app = FastAPI(title="Order Book Liquidity Monitor")
+
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse(url="/docs")
 
 
 def get_db_path() -> str:
