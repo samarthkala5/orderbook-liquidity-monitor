@@ -176,3 +176,28 @@ def test_exactly_five_routes_are_documented():
         "/history/{exchange}/{symbol}",
         "/compare/{symbol}",
     }
+from fastapi.testclient import TestClient
+from app.api import app
+
+client = TestClient(app)
+
+def test_root_returns_dashboard_html():
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "<title>Orderbook Liquidity Monitor</title>" in response.text
+
+def test_openapi_schema_has_exactly_five_endpoints():
+    response = client.get("/openapi.json")
+    assert response.status_code == 200
+    schema = response.json()
+    paths = schema.get("paths", {})
+    # Verify exactly 5 API paths are exposed in the documentation schema
+    assert len(paths) == 5
+    assert set(paths.keys()) == {
+        "/health",
+        "/symbols",
+        "/metrics/{exchange}/{symbol}",
+        "/history/{exchange}/{symbol}",
+        "/compare/{symbol}",
+    }
