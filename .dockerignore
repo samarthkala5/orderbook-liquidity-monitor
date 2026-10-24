@@ -6,6 +6,7 @@ __pycache__
 *.pyc
 .pytest_cache
 *.db
+!seed/orderbook.db
 *.db-wal
 *.db-shm
 tests

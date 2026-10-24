@@ -49,82 +49,101 @@
     </div>
 
     <script>
-        let currentSymbol = 'BTC';
-        let chart;
+    let currentSymbol = 'BTC';
+    let chart;
 
-        function setSymbol(sym) {
-            currentSymbol = sym;
-            document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.innerText === sym));
-            refresh();
-        }
-
-        async function fetchCompare() {
-    try {
-        const res = await fetch(`/compare/${currentSymbol}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        const binance = data.exchanges.find(e => e.exchange === 'binance');
-        const coinbase = data.exchanges.find(e => e.exchange === 'coinbase');
-
-        if (binance) {
-            document.getElementById('binance-spread').innerText = binance.spread_bps.toFixed(4) + ' bps';
-            document.getElementById('binance-slip').innerText = binance.slip_buy_10k_bps !== null ? binance.slip_buy_10k_bps.toFixed(4) + ' bps' : 'N/A';
-        }
-        if (coinbase) {
-            document.getElementById('coinbase-spread').innerText = coinbase.spread_bps.toFixed(4) + ' bps';
-            document.getElementById('coinbase-slip').innerText = coinbase.slip_buy_10k_bps !== null ? coinbase.slip_buy_10k_bps.toFixed(4) + ' bps' : 'N/A';
-        }
-    } catch (e) { console.error("Compare error", e); }
-}
-
-        async function fetchHistory() {
-            try {
-                const [bRes, cRes] = await Promise.all([
-                    fetch(`/history/binance/${currentSymbol}?minutes=60&limit=60`),
-                    fetch(`/history/coinbase/${currentSymbol}?minutes=60&limit=60`)
-                ]);
-                const bData = bRes.ok ? await bRes.json() : [];
-                const cData = cRes.ok ? await cRes.json() : [];
-
-                const labels = bData.map(r => new Date(r.ts_utc).toLocaleTimeString()).reverse();
-                const bSpreads = bData.map(r => r.spread_bps).reverse();
-                const cSpreads = cData.map(r => r.spread_bps).reverse();
-
-                updateChart(labels, bSpreads, cSpreads);
-            } catch (e) { console.error("History error", e); }
-        }
-
-        function updateChart(labels, binanceData, coinbaseData) {
-            const ctx = document.getElementById('spreadChart').getContext('2d');
-            if (chart) chart.destroy();
-            chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        { label: 'Binance Spread (bps)', data: binanceData, borderColor: '#f0b90b', tension: 0.1 },
-                        { label: 'Coinbase Spread (bps)', data: coinbaseData, borderColor: '#0052ff', tension: 0.1 }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
-                        y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
-                    },
-                    plugins: { legend: { labels: { color: '#f8fafc' } } }
-                }
-            });
-        }
-
-        function refresh() {
-            fetchCompare();
-            fetchHistory();
-        }
+    function setSymbol(sym) {
+        currentSymbol = sym;
+        document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.innerText === sym));
+        
+        // Reset KPI cards while fetching new symbol
+        document.getElementById('binance-spread').innerText = 'Loading...';
+        document.getElementById('coinbase-spread').innerText = 'Loading...';
+        document.getElementById('binance-slip').innerText = 'Loading...';
+        document.getElementById('coinbase-slip').innerText = 'Loading...';
 
         refresh();
-        setInterval(refresh, 10000);
-    </script>
+    }
+
+    async function fetchCompare() {
+        try {
+            const res = await fetch(`/compare/${currentSymbol}`);
+            if (!res.ok) {
+                const errText = `Err (${res.status})`;
+                document.getElementById('binance-spread').innerText = errText;
+                document.getElementById('coinbase-spread').innerText = errText;
+                document.getElementById('binance-slip').innerText = errText;
+                document.getElementById('coinbase-slip').innerText = errText;
+                return;
+            }
+
+            const data = await res.json();
+            const binance = data.exchanges.find(e => e.exchange === 'binance');
+            const coinbase = data.exchanges.find(e => e.exchange === 'coinbase');
+
+            if (binance) {
+                document.getElementById('binance-spread').innerText = binance.spread_bps.toFixed(4) + ' bps';
+                document.getElementById('binance-slip').innerText = binance.slip_buy_10k_bps !== null ? binance.slip_buy_10k_bps.toFixed(4) + ' bps' : 'N/A';
+            }
+            if (coinbase) {
+                document.getElementById('coinbase-spread').innerText = coinbase.spread_bps.toFixed(4) + ' bps';
+                document.getElementById('coinbase-slip').innerText = coinbase.slip_buy_10k_bps !== null ? coinbase.slip_buy_10k_bps.toFixed(4) + ' bps' : 'N/A';
+            }
+        } catch (e) {
+            console.error("Compare error", e);
+        }
+    }
+
+    async function fetchHistory() {
+        try {
+            const [bRes, cRes] = await Promise.all([
+                fetch(`/history/binance/${currentSymbol}?minutes=60&limit=60`),
+                fetch(`/history/coinbase/${currentSymbol}?minutes=60&limit=60`)
+            ]);
+            const bData = bRes.ok ? await bRes.json() : [];
+            const cData = cRes.ok ? await cRes.json() : [];
+
+            const labels = bData.map(r => new Date(r.ts_utc).toLocaleTimeString()).reverse();
+            const bSpreads = bData.map(r => r.spread_bps).reverse();
+            const cSpreads = cData.map(r => r.spread_bps).reverse();
+
+            updateChart(labels, bSpreads, cSpreads);
+        } catch (e) {
+            console.error("History error", e);
+        }
+    }
+
+    function updateChart(labels, binanceData, coinbaseData) {
+        const ctx = document.getElementById('spreadChart').getContext('2d');
+        if (chart) chart.destroy();
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'Binance Spread (bps)', data: binanceData, borderColor: '#f0b90b', tension: 0.1 },
+                    { label: 'Coinbase Spread (bps)', data: coinbaseData, borderColor: '#0052ff', tension: 0.1 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+                    y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                },
+                plugins: { legend: { labels: { color: '#f8fafc' } } }
+            }
+        });
+    }
+
+    function refresh() {
+        fetchCompare();
+        fetchHistory();
+    }
+
+    refresh();
+    setInterval(refresh, 10000);
+</script>
 </body>
 </html>
